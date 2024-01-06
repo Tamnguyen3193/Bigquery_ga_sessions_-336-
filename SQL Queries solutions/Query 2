@@ -1,0 +1,12 @@
+--Query 02: Bounce rate per traffic source in July 2017--
+SELECT *
+FROM
+(SELECT 
+       trafficSource.source,
+       SUM(totals.visits) AS total_visit,
+       SUM(totals.bounces) AS total_bounce,
+       (SUM(totals.bounces)*100.0/SUM(totals.visits)) AS bounce_rate
+FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201707*`
+GROUP BY trafficSource.source
+HAVING SUM(totals.bounces) IS NOT NULL)--get rid of null value
+ORDER BY total_visit DESC;
