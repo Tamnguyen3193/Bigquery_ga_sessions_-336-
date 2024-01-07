@@ -1,0 +1,20 @@
+--Query 07: Other products purchased by customers who purchased product "YouTube Men's Vintage Henley" in July 2017. Output should show product name and the quantity was ordered.
+SELECT
+  product.v2ProductName,
+  SUM(product.productQuantity) AS quantity
+FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201707*`,
+UNNEST (hits) hits,
+UNNEST (hits.product) product
+WHERE fullVisitorId IN(--subquery listing customers who purchased YouTube Men's Vintage Henley
+                        SELECT 
+                          fullVisitorId
+                        FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201707*`,
+                        UNNEST (hits) hits,
+                        UNNEST (hits.product) product
+                        WHERE product.v2ProductName = "YouTube Men's Vintage Henley" AND product.productRevenue IS NOT NULL AND totals.transactions >=1
+)
+AND product.v2ProductName !="YouTube Men's Vintage Henley"
+AND product.productRevenue IS NOT NULL
+AND totals.transactions >=1
+GROUP BY product.v2ProductName
+ORDER BY quantity DESC;
