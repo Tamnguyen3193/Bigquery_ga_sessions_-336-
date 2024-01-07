@@ -1,0 +1,51 @@
+--Query 08: Calculate cohort map from product view to addtocart to purchase in Jan, Feb and March 2017. For example, 
+100% product view then 40% add_to_cart and 10% purchase.
+Add_to_cart_rate = number product  add to cart/number product view. Purchase_rate = number product purchase/number product view. 
+The output should be calculated in product level.
+
+WITH dataset AS(--setup data
+SELECT 
+  *, 
+  FORMAT_DATE('%Y%m', PARSE_dATE('%Y%m%d',date)) AS month
+FROM `bigquery-public-data.google_analytics_sample.ga_sessions_2017*`,
+UNNEST (hits) hits,
+UNNEST (hits.product) product
+WHERE _table_suffix BETWEEN '0101' AND '0331')
+
+, view AS(--cal num_product_view
+SELECT 
+  month,
+  COUNT(eCommerceAction.action_type) AS num_product_view
+FROM dataset
+WHERE eCommerceAction.action_type = '2'
+GROUP BY month)
+
+,addtocart AS(--cal num_addtocart
+SELECT 
+  month,
+  COUNT(eCommerceAction.action_type) AS num_addtocart
+FROM dataset
+WHERE eCommerceAction.action_type = '3'
+GROUP BY month) 
+
+,purchase AS(--cal num_purchase
+SELECT 
+  month,
+  COUNT(eCommerceAction.action_type) AS num_purchase
+FROM dataset
+WHERE eCommerceAction.action_type = '6'
+AND productRevenue IS NOT NULL
+GROUP BY month)
+
+SELECT --left join 3 cte above and cal rates
+    p1.*, 
+    p2.num_addtocart, 
+    p3.num_purchase, 
+    ROUND((p2.num_addtocart/p1.num_product_view)*100.0,2) AS add_to_cart_rate, 
+    ROUND((p3.num_purchase/p1.num_product_view)*100.0,2) AS purchase_rate 
+FROM view AS p1
+LEFT JOIN addtocart AS p2
+USING (month) 
+LEFT JOIN purchase AS p3
+USING (month) 
+ORDER BY p1.month;
