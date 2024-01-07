@@ -1,0 +1,33 @@
+--Query 3: Revenue by traffic source by week, by month in June 2017
+
+WITH 
+data AS (
+  SELECT *
+  FROM `bigquery-public-data.google_analytics_sample.ga_sessions_201706*`,
+  UNNEST (hits) hits,
+  UNNEST (hits.product) product)
+
+,week_month AS(--Query week data
+  SELECT
+    'week' as type_time,
+    FORMAT_DATE('%Y%W', PARSE_DATE('%Y%m%d',date)) AS time,
+    trafficSource.source,
+    SUM(productRevenue)/1000000 AS revenue
+  FROM data
+  WHERE productRevenue IS NOT NULL
+  GROUP BY FORMAT_DATE('%Y%W', PARSE_DATE('%Y%m%d',date)),trafficSource.source
+
+  UNION ALL
+
+  SELECT --query month data
+    'month' as type_time,
+    FORMAT_DATE('%Y%m', PARSE_DATE('%Y%m%d',date)) AS time,
+    trafficSource.source,
+    SUM(productRevenue)/1000000 AS revenue
+  FROM data
+  WHERE productRevenue IS NOT NULL
+  GROUP BY FORMAT_DATE('%Y%m', PARSE_DATE('%Y%m%d',date)),trafficSource.source)
+
+SELECT * --order by revenue
+FROM week_month
+ORDER BY revenue DESC;
